@@ -1,8 +1,21 @@
+import argparse
 import nettest
 import json
 from datetime import datetime
 
-def report_net_speed(update_requested):
+def reporter(update_hour):
+
+    # update_requested = check if an update has been requested via Twitter
+    # done = determine if a routine check has been performed today
+    # See if the routine check has been performed by reading the logs (tail -n 1 might be easiest)
+    publish = False
+
+    if datetime.today().hour <
+    routine = all([datetime.weekday(datetime.today().date()) < 5 ,datetime.today().hour == update, not done])
+    
+    if update_requested or routine:
+        
+def report_net_speed(publish):
 
     speedstring = nettest.perform_speedtest()
     netspeed_dict = nettest.parse_speedtest(speedstring) # necessary here?
@@ -10,9 +23,7 @@ def report_net_speed(update_requested):
 
     report = "Current Internet Speeds:\n" + speedstring
 
-    # if an update is explictly requested or if it's 8:00 on a weekday, publish to Twitter
-    if update_requested or (datetime.weekday(datetime.today().date()) < 5 and datetime.today().hour == 8):
-        pass  # Twitter API call to publish report goes here 
+    # if publish, then write to twitter
     
     print report # debug
     print len(report) # debug
@@ -23,9 +34,17 @@ def auth_data():
         data = json.load(f)
     return(data)
 
+def arguments():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-h', '--daily-update-hour', type = int, default = 8)
+
+    return parser.parse_args()
+
 def main():
     
-    report_net_speed()
+    args = arguments()
+    reporter(args.update_hour)
 
 if __name__ == '__main__':
     main()
