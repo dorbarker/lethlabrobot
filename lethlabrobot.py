@@ -2,6 +2,7 @@ import argparse
 import nettest
 import json
 import subprocess
+import tweepy
 from datetime import datetime
 
 def last_update_time():
@@ -27,7 +28,7 @@ def check_requested():
     #   Else: return False
     pass
 
-def reporter(update_hour):
+def reporter(api, update_hour):
 
     # update_requested = check if an update has been requested via Twitter
     # done = determine if a routine check has been performed today
@@ -36,9 +37,9 @@ def reporter(update_hour):
     done = last_update_time() >= update_hour
     routine = all([datetime.weekday(datetime.today().date()) < 5 ,datetime.today().hour == update, not done])
     
-    report_net_speed(routine or update_requested)
+    report_net_speed(api, routine or update_requested)
 
-def report_net_speed(publish):
+def report_net_speed(api, publish):
 
     speedstring = nettest.perform_speedtest()
     netspeed_dict = nettest.parse_speedtest(speedstring) # necessary here?
@@ -47,15 +48,24 @@ def report_net_speed(publish):
     report = "Current Internet Speeds:\n" + speedstring
 
     # if publish is True, then write to twitter
-    
+    if publish:
+        api.update_status(report)
+
     print report # debug
     print len(report) # debug
 
-def auth_data():
+def authenticate():
 
     with open("auth.json", "r") as f:
         data = json.load(f)
-    return(data)
+    
+    auth = tweepy.OAuthHandler(data["consumer_key"], data["consumer_secret"])
+
+    auth.set_access_token(data["access_key"], data["access_secret"])
+
+    api = tweepy.API(auth)
+
+    return api
 
 def arguments():
 
@@ -67,7 +77,8 @@ def arguments():
 def main():
     
     args = arguments()
-    reporter(args.update_hour)
+    api = authenticate()
+    reporter(api, args.update_hour)
 
 if __name__ == '__main__':
     main()
