@@ -5,7 +5,14 @@ import subprocess
 import tweepy
 from datetime import datetime
 
-def last_update_time():
+def last_update_time(column = "hour"):
+    """Retrieves the last time at which the program was run.
+    
+    Uses tail from coreutils to get the last line of the log.
+
+    Which log column to return is passed in as string parameter.
+    """
+    times = {"year": 0, "month": 1, "day": 2, "hour":3}
 
     proc = subprocess.Popen(["tail", "-n 1", "netspeed.log"],
                             stdout = subprocess.PIPE,
@@ -14,8 +21,9 @@ def last_update_time():
 
     proc_out, proc_err = proc.communicate()
     l = proc_out.strip().split(',')
-
-    out = int(l[3])
+    
+    col = times[column]
+    out = int(l[col])
 
     return out
 
@@ -29,32 +37,39 @@ def check_requested():
     pass
 
 def reporter(api, update_hour):
-
-    # update_requested = check if an update has been requested via Twitter
-    # done = determine if a routine check has been performed today
-    # See if the routine check has been performed by reading the logs (tail -n 1 might be easiest)
+    """Handles checks as to whether a published update is required or not."""
     
-    done = last_update_time() >= update_hour
-    routine = all([datetime.weekday(datetime.today().date()) < 5 ,datetime.today().hour == update, not done])
+    done = last_update_time("hour") >= update_hour
+    
+    routine = all([datetime.weekday(datetime.today().date()) < 5,
+                   datetime.today().hour == update,
+                   not done])
     
     report_net_speed(api, routine or update_requested)
 
 def report_net_speed(api, publish):
+    """Publishes to Twitter if publish == True
+    
+    Calls functions from nettest for checking and parsing net speed. 
+    """
 
     speedstring = nettest.perform_speedtest()
-    netspeed_dict = nettest.parse_speedtest(speedstring) # necessary here?
+    netspeed_dict = nettest.parse_speedtest(speedstring)
     nettest.write_speed_log(netspeed_dict)
 
     report = "Current Internet Speeds:\n" + speedstring
 
-    # if publish is True, then write to twitter
     if publish:
         api.update_status(report)
 
-    print report # debug
-    print len(report) # debug
+    print(report) # debug
+    print (len(report)) # debug
 
 def authenticate():
+    """Loads user credentials from auth.json in the same directory
+
+    and returns the Twitter API object.
+    """
 
     with open("auth.json", "r") as f:
         data = json.load(f)
@@ -68,9 +83,10 @@ def authenticate():
     return api
 
 def arguments():
+    """Terminal arguments."""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-h', '--daily-update-hour', type = int, default = 8)
+    parser.add_argument('-t', '--daily-update-hour', type = int, default = 8)
 
     return parser.parse_args()
 
@@ -82,3 +98,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
